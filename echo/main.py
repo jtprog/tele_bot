@@ -16,6 +16,9 @@ from telegram.ext import CallbackQueryHandler
 from apis.bittrex import BittrexClient
 from apis.bittrex import BittrexError
 from echo.config import load_config
+from echo.buttons import BUTTON1_HELP
+from echo.buttons import BUTTON2_TIME
+from echo.buttons import get_base_reply_keyboard
 
 
 # `callback_data` -- это то, что будет присылать TG при нажатии на каждую кнопку.
@@ -159,7 +162,7 @@ def do_start(bot: Bot, update: Update):
     bot.send_message(
         chat_id=update.message.chat_id,
         text="Привет! Отправь мне что-нибудь",
-        reply_markup=get_base_inline_keyboard(),
+        reply_markup=get_base_reply_keyboard(),
     )
 
 
@@ -193,12 +196,18 @@ def do_time(bot: Bot, update: Update):
 
 def do_echo(bot: Bot, update: Update):
     chat_id = update.message.chat_id
-    text = "Ваш ID = {}\n\n{}".format(chat_id, update.message.text)
-    bot.send_message(
-        chat_id=chat_id,
-        text=text,
-        reply_markup=get_base_inline_keyboard(),
-    )
+    text = update.message.text
+    if text == BUTTON1_HELP:
+        return do_help(bot=bot, update=update)
+    elif text == BUTTON2_TIME:
+        return do_time(bot=bot, update=update)
+    else:
+        reply_text = "Ваш ID = {}\n\n{}".format(chat_id, text)
+        bot.send_message(
+            chat_id=chat_id,
+            text=reply_text,
+            reply_markup=get_base_inline_keyboard(),
+        )
 
 
 def main():
