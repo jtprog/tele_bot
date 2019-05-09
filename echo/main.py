@@ -1,4 +1,5 @@
 import datetime
+from logging import getLogger
 from subprocess import Popen
 from subprocess import PIPE
 
@@ -7,6 +8,7 @@ from telegram import Update
 from telegram import ParseMode
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
+from telegram import ReplyKeyboardRemove
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
@@ -21,6 +23,25 @@ from echo.buttons import BUTTON2_TIME
 from echo.buttons import get_base_reply_keyboard
 
 
+config = load_config()
+
+logger = getLogger(__name__)
+
+
+def debug_requests(f):
+    """ Декоратор для отладки событий от телеграма
+    """
+    def inner(*args, **kwargs):
+        try:
+            logger.info("Обращение в функцию {}".format(f.__name__))
+            return f(*args, **kwargs)
+        except Exception:
+            logger.exception("Ошибка в обработчике {}".format(f.__name__))
+            raise
+
+    return inner
+
+
 # `callback_data` -- это то, что будет присылать TG при нажатии на каждую кнопку.
 # Поэтому каждый идентификатор должен быть уникальным
 CALLBACK_BUTTON1_LEFT = "callback_button1_left"
@@ -31,6 +52,7 @@ CALLBACK_BUTTON5_TIME = "callback_button5_time"
 CALLBACK_BUTTON6_PRICE = "callback_button6_price"
 CALLBACK_BUTTON7_PRICE = "callback_button7_price"
 CALLBACK_BUTTON8_PRICE = "callback_button8_price"
+CALLBACK_BUTTON_HIDE_KEYBOARD = "callback_button9_hide"
 
 
 TITLES = {
@@ -42,6 +64,7 @@ TITLES = {
     CALLBACK_BUTTON6_PRICE: "BTC 💰",
     CALLBACK_BUTTON7_PRICE: "LTC 💰",
     CALLBACK_BUTTON8_PRICE: "ETH 💰",
+    CALLBACK_BUTTON_HIDE_KEYBOARD: "Спрять клавиатуру",
 }
 
 # Глобально инициализируем клиент API Bittrex
@@ -59,6 +82,9 @@ def get_base_inline_keyboard():
         [
             InlineKeyboardButton(TITLES[CALLBACK_BUTTON1_LEFT], callback_data=CALLBACK_BUTTON1_LEFT),
             InlineKeyboardButton(TITLES[CALLBACK_BUTTON2_RIGHT], callback_data=CALLBACK_BUTTON2_RIGHT),
+        ],
+        [
+            InlineKeyboardButton(TITLES[CALLBACK_BUTTON_HIDE_KEYBOARD], callback_data=CALLBACK_BUTTON_HIDE_KEYBOARD),
         ],
         [
             InlineKeyboardButton(TITLES[CALLBACK_BUTTON3_MORE], callback_data=CALLBACK_BUTTON3_MORE),
@@ -87,6 +113,7 @@ def get_keyboard2():
     return InlineKeyboardMarkup(keyboard)
 
 
+@debug_requests
 def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
     """ Обработчик ВСЕХ кнопок со ВСЕХ клавиатур
     """
@@ -156,8 +183,18 @@ def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=get_keyboard2(),
         )
+    elif data == CALLBACK_BUTTON_HIDE_KEYBOARD:
+        # Спрятать клавиатуру
+        # Работает только при отправке нового сообщение
+        # Можно было бы отредактировать, но тогда нужно точно знать что у сообщения не было кнопок
+        bot.send_message(
+            chat_id=chat_id,
+            text="Спрятали клавиатуру\n\nНажмите /start чтобы вернуть её обратно",
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
 
+@debug_requests
 def do_start(bot: Bot, update: Update):
     bot.send_message(
         chat_id=update.message.chat_id,
@@ -166,6 +203,7 @@ def do_start(bot: Bot, update: Update):
     )
 
 
+@debug_requests
 def do_help(bot: Bot, update: Update):
     bot.send_message(
         chat_id=update.message.chat_id,
@@ -176,6 +214,7 @@ def do_help(bot: Bot, update: Update):
     )
 
 
+@debug_requests
 def do_time(bot: Bot, update: Update):
     """ Узнать серверное время
     """
@@ -194,6 +233,7 @@ def do_time(bot: Bot, update: Update):
     )
 
 
+@debug_requests
 def do_echo(bot: Bot, update: Update):
     chat_id = update.message.chat_id
     text = update.message.text
@@ -211,7 +251,7 @@ def do_echo(bot: Bot, update: Update):
 
 
 def main():
-    config = load_config()
+    logger.info("Запускаем бота...")
 
     bot = Bot(
         token=config.TG_TOKEN,
@@ -237,6 +277,8 @@ def main():
     updater.start_polling()
     # Не прерывать скрипт до обработки всех сообщений
     updater.idle()
+
+    logger.info("Закончили...")
 
 
 if __name__ == '__main__':
