@@ -4,9 +4,13 @@ import time
 import os
 import urllib.error
 import urllib.request
+from logging import getLogger
 from io import BytesIO
 
 from PIL import Image
+
+
+logger = getLogger(__name__)
 
 
 def mkdir(path):
@@ -27,5 +31,5 @@ def mkdir(path):
 
 def get_filename():
     filename = "result_{}_{}.png".format(int(time.time()), random.randint(1, 100))
-    print("Сохраняю в файл `{}`".format(filename))
+    logger.debug("Сохраняю в файл `%s`", filename)
     return filename
