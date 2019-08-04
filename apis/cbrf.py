@@ -1,4 +1,5 @@
 import datetime
+import http
 from collections import namedtuple
 from logging import getLogger
 from typing import Optional
@@ -18,6 +19,11 @@ def str_to_float(item: str) -> float:
     return float(item)
 
 
+class CentralBankError(Exception):
+    """ Ошибка при запросе API ЦБ
+    """
+
+
 def get_rate() -> Optional[Rate]:
     # URL запроса
     get_curl = "http://www.cbr.ru/scripts/XML_daily.asp"
@@ -30,22 +36,29 @@ def get_rate() -> Optional[Rate]:
         "date_req": today.strftime(date_format),
     }
     r = requests.get(get_curl, params=params)
-    # TODO: обрабатывать ошибки от API
+    if r.status_code != http.HTTPStatus.OK:
+        raise CentralBankError('bad status code')
 
     resp = r.text
 
-    # TODO: обрабатывать ошибки парсинга XML
-    data = xmltodict.parse(resp)
+    try:
+        data = xmltodict.parse(resp)
+    except xmltodict.expat.error:
+        logger.exception('status_code = %s\n%s\n----', r.status_code, resp)
+        raise CentralBankError('bad xml')
 
     # Ищем по @ID
     section_id = 'R01235'
 
-    # TODO: обрабатывать ошибки парсинга JSON
-    for item in data['ValCurs']['Valute']:
-        if item['@ID'] == section_id:
-            r = Rate(
-                name=item['CharCode'],
-                rate=str_to_float(item['Value']),
-            )
-            return r
+    try:
+        for item in data['ValCurs']['Valute']:
+            if item['@ID'] == section_id:
+                r = Rate(
+                    name=item['CharCode'],
+                    rate=str_to_float(item['Value']),
+                )
+                return r
+    except (KeyError, TypeError, ValueError):
+        logger.exception('json traversal error')
+        raise CentralBankError('json traversal error')
     return None
