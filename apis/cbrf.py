@@ -1,6 +1,7 @@
 import datetime
 from collections import namedtuple
 from logging import getLogger
+from typing import Optional
 
 import xmltodict
 import requests
@@ -12,12 +13,12 @@ logger = getLogger(__name__)
 Rate = namedtuple('Rate', 'name,rate')
 
 
-def str_to_float(item: str):
+def str_to_float(item: str) -> float:
     item = item.replace(',', '.')
     return float(item)
 
 
-def get_rate():
+def get_rate() -> Optional[Rate]:
     # URL запроса
     get_curl = "http://www.cbr.ru/scripts/XML_daily.asp"
     # Формат даты: день/месяц/год
