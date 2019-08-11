@@ -14,3 +14,6 @@ TG_API_URL = None
 NOTIFY_PAIR = "USD-BTC"
 # ID своего пользователя
 NOTIFY_USER_ID = 720951086
+
+# ID владельца канала для получения отзывов/заявок
+FEEDBACK_USER_ID = 50512389

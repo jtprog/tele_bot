@@ -21,25 +21,12 @@ from echo.config import load_config
 from echo.buttons import BUTTON1_HELP
 from echo.buttons import BUTTON2_TIME
 from echo.buttons import get_base_reply_keyboard
+from echo.utils import debug_requests
 
 
 config = load_config()
 
 logger = getLogger(__name__)
-
-
-def debug_requests(f):
-    """ Декоратор для отладки событий от телеграма
-    """
-    def inner(*args, **kwargs):
-        try:
-            logger.info("Обращение в функцию {}".format(f.__name__))
-            return f(*args, **kwargs)
-        except Exception:
-            logger.exception("Ошибка в обработчике {}".format(f.__name__))
-            raise
-
-    return inner
 
 
 # `callback_data` -- это то, что будет присылать TG при нажатии на каждую кнопку.
