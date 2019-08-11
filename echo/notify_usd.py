@@ -1,26 +1,35 @@
+from logging import getLogger
+
 from telegram import Bot
 
 from apis.cbrf import get_rate
+from apis.cbrf import CentralBankError
 from echo.config import load_config
 
 
-NOTIFY_USER_ID = -1001386305123
+config = load_config()
+
+logger = getLogger(__name__)
 
 
 def main():
-    item = get_rate()
+    try:
+        item = get_rate()
+    except CentralBankError:
+        logger.exception('Ошибка при получении курса $:')
+        item = None
+
     if item:
         message = f'Курс {item.name} = {item.rate} руб.'
     else:
         message = 'Ошибка при поиске курса'
 
-    config = load_config()
     bot = Bot(
         token=config.TG_TOKEN,
         base_url=config.TG_API_URL,
     )
     bot.send_message(
-        chat_id=NOTIFY_USER_ID,
+        chat_id=config.USD_NOTIFY_USER_ID,
         text=message,
     )
 

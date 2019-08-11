@@ -55,7 +55,7 @@ def do_echo(bot: Bot, update: Update):
         # Пересылать всё как есть
         bot.forward_message(
             chat_id=config.FEEDBACK_USER_ID,
-            from_chat_id=update.message.chat_id,
+            from_chat_id=chat_id,
             message_id=update.message.message_id,
         )
         bot.send_message(
