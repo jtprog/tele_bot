@@ -1,10 +1,6 @@
 import random
 import time
 import os
-from logging import getLogger
-
-
-logger = getLogger(__name__)
 
 
 def mkdir(path):
@@ -25,13 +21,16 @@ def mkdir(path):
 
 def get_filename():
     filename = 'result_{}_{}.png'.format(int(time.time()), random.randint(1, 100))
-    logger.debug('Сохраняю в файл `%s`', filename)
     return filename
 
 
 def debug_requests(f):
     """ Декоратор для отладки событий от телеграма
+        Логгер подключается в самый последний момент чтобы быть уверенными в том, что конфиг логирования уже загружен
     """
+    from logging import getLogger
+    logger = getLogger(__name__)
+
     def inner(*args, **kwargs):
         try:
             logger.info('Обращение в функцию {}'.format(f.__name__))
