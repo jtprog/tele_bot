@@ -32,6 +32,7 @@ def main():
         chat_id=config.USD_NOTIFY_USER_ID,
         text=message,
     )
+    logger.info('Success: %s', message)
 
 
 if __name__ == '__main__':

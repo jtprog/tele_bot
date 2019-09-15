@@ -3,12 +3,12 @@ from logging import getLogger
 from subprocess import Popen
 from subprocess import PIPE
 
-from telegram import Bot
 from telegram import Update
 from telegram import ParseMode
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 from telegram import ReplyKeyboardRemove
+from telegram.ext import CallbackContext
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
@@ -101,7 +101,7 @@ def get_keyboard2():
 
 
 @debug_requests
-def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
+def keyboard_callback_handler(update: Update, context: CallbackContext):
     """ Обработчик ВСЕХ кнопок со ВСЕХ клавиатур
     """
     query = update.callback_query
@@ -120,7 +120,7 @@ def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
             parse_mode=ParseMode.MARKDOWN,
         )
         # Отправим новое сообщение при нажатии на кнопку
-        bot.send_message(
+        context.bot.send_message(
             chat_id=chat_id,
             text="Новое сообщение\n\ncallback_query.data={}".format(data),
             reply_markup=get_base_inline_keyboard(),
@@ -174,7 +174,7 @@ def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
         # Спрятать клавиатуру
         # Работает только при отправке нового сообщение
         # Можно было бы отредактировать, но тогда нужно точно знать что у сообщения не было кнопок
-        bot.send_message(
+        context.bot.send_message(
             chat_id=chat_id,
             text="Спрятали клавиатуру\n\nНажмите /start чтобы вернуть её обратно",
             reply_markup=ReplyKeyboardRemove(),
@@ -182,18 +182,16 @@ def keyboard_callback_handler(bot: Bot, update: Update, **kwargs):
 
 
 @debug_requests
-def do_start(bot: Bot, update: Update):
-    bot.send_message(
-        chat_id=update.message.chat_id,
+def do_start(update: Update, context: CallbackContext):
+    update.message.reply_text(
         text="Привет! Отправь мне что-нибудь",
         reply_markup=get_base_reply_keyboard(),
     )
 
 
 @debug_requests
-def do_help(bot: Bot, update: Update):
-    bot.send_message(
-        chat_id=update.message.chat_id,
+def do_help(update: Update, context: CallbackContext):
+    update.message.reply_text(
         text="Это учебный бот\n\n"
              "Список доступных команд есть в меню\n\n"
              "Так же я отвечую на любое сообщение",
@@ -202,8 +200,9 @@ def do_help(bot: Bot, update: Update):
 
 
 @debug_requests
-def do_time(bot: Bot, update: Update):
+def do_time(update: Update, context: CallbackContext):
     """ Узнать серверное время
+        Работает только на Unix-системах!
     """
     process = Popen(["date"], stdout=PIPE)
     text, error = process.communicate()
@@ -213,25 +212,23 @@ def do_time(bot: Bot, update: Update):
     else:
         # Декодировать ответ команды из процесса
         text = text.decode("utf-8")
-    bot.send_message(
-        chat_id=update.message.chat_id,
+    update.message.reply_text(
         text=text,
         reply_markup=get_base_inline_keyboard(),
     )
 
 
 @debug_requests
-def do_echo(bot: Bot, update: Update):
+def do_echo(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
     text = update.message.text
     if text == BUTTON1_HELP:
-        return do_help(bot=bot, update=update)
+        return do_help(update=update, context=context)
     elif text == BUTTON2_TIME:
-        return do_time(bot=bot, update=update)
+        return do_time(update=update, context=context)
     else:
         reply_text = "Ваш ID = {}\n\n{}".format(chat_id, text)
-        bot.send_message(
-            chat_id=chat_id,
+        update.message.reply_text(
             text=reply_text,
             reply_markup=get_base_inline_keyboard(),
         )
@@ -240,12 +237,10 @@ def do_echo(bot: Bot, update: Update):
 def main():
     logger.info("Запускаем бота...")
 
-    bot = Bot(
+    updater = Updater(
         token=config.TG_TOKEN,
         base_url=config.TG_API_URL,
-    )
-    updater = Updater(
-        bot=bot,
+        use_context=True,
     )
 
     start_handler = CommandHandler("start", do_start)

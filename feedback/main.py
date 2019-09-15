@@ -1,7 +1,7 @@
 from logging import getLogger
 
-from telegram import Bot
 from telegram import Update
+from telegram.ext import CallbackContext
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
 from telegram.ext import Filters
@@ -17,15 +17,14 @@ logger = getLogger(__name__)
 
 
 @debug_requests
-def do_start(bot: Bot, update: Update):
-    bot.send_message(
-        chat_id=update.message.chat_id,
+def do_start(update: Update, context: CallbackContext):
+    update.message.reply_text(
         text='Отправь мне текст, и я перешлю его автору канала',
     )
 
 
 @debug_requests
-def do_echo(bot: Bot, update: Update):
+def do_echo(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
 
     if chat_id == config.FEEDBACK_USER_ID:
@@ -36,9 +35,12 @@ def do_echo(bot: Bot, update: Update):
             forward_from = reply.forward_from
             if forward_from:
                 text = 'Сообщение от автора канала:\n\n' + update.message.text
-                bot.send_message(
+                context.bot.send_message(
                     chat_id=forward_from.id,
                     text=text,
+                )
+                update.message.reply_text(
+                    text='Сообщение было отправлено',
                 )
             else:
                 error_message = 'Нельзя ответить самому себе'
@@ -47,19 +49,15 @@ def do_echo(bot: Bot, update: Update):
 
         # Отправить сообщение об ошибке если оно есть
         if error_message is not None:
-            bot.send_message(
-                chat_id=chat_id,
+            update.message.reply_text(
                 text=error_message,
             )
     else:
         # Пересылать всё как есть
-        bot.forward_message(
+        update.message.forward(
             chat_id=config.FEEDBACK_USER_ID,
-            from_chat_id=chat_id,
-            message_id=update.message.message_id,
         )
-        bot.send_message(
-            chat_id=chat_id,
+        update.message.reply_text(
             text='Сообщение было отправлено',
         )
 
@@ -67,12 +65,10 @@ def do_echo(bot: Bot, update: Update):
 def main():
     logger.info('Запускаем бота...')
 
-    bot = Bot(
+    updater = Updater(
         token=config.TG_TOKEN,
         base_url=config.TG_API_URL,
-    )
-    updater = Updater(
-        bot=bot,
+        use_context=True,
     )
 
     start_handler = CommandHandler('start', do_start)

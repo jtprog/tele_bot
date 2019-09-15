@@ -1,8 +1,7 @@
 from logging import getLogger
 
-from telegram import Bot
 from telegram import Update
-from telegram import ReplyKeyboardRemove
+from telegram.ext import CallbackContext
 from telegram.ext import Updater
 from telegram.ext import MessageHandler
 from telegram.ext import CommandHandler
@@ -26,20 +25,19 @@ NAME, GENDER, AGE = range(3)
 
 
 @debug_requests
-def start_handler(bot: Bot, update: Update):
+def start_handler(update: Update, context: CallbackContext):
     # Спросить имя
     update.message.reply_text(
         'Введи своё имя чтобы продолжить:',
-        reply_markup=ReplyKeyboardRemove(),
     )
     return NAME
 
 
 @debug_requests
-def name_handler(bot: Bot, update: Update, user_data: dict):
+def name_handler(update: Update, context: CallbackContext):
     # Получить имя
-    user_data[NAME] = update.message.text
-    logger.info('user_data: %s', user_data)
+    context.user_data[NAME] = update.message.text
+    logger.info('user_data: %s', context.user_data)
 
     # Спросить пол
     genders = [f'{key} - {value}' for key, value in GENDER_MAP.items()]
@@ -53,15 +51,15 @@ def name_handler(bot: Bot, update: Update, user_data: dict):
 
 
 @debug_requests
-def age_handler(bot: Bot, update: Update, user_data: dict):
+def age_handler(update: Update, context: CallbackContext):
     # Получить пол
     gender = validate_gender(text=update.message.text)
     if gender is None:
         update.message.reply_text('Пожалуйста, укажите корректный пол!')
         return GENDER
 
-    user_data[GENDER] = gender
-    logger.info('user_data: %s', user_data)
+    context.user_data[GENDER] = gender
+    logger.info('user_data: %s', context.user_data)
 
     # Спросить возраст
     update.message.reply_text('''
@@ -71,15 +69,15 @@ def age_handler(bot: Bot, update: Update, user_data: dict):
 
 
 @debug_requests
-def finish_handler(bot: Bot, update: Update, user_data: dict):
+def finish_handler(update: Update, context: CallbackContext):
     # Получить возраст
     age = validate_age(text=update.message.text)
     if age is None:
         update.message.reply_text('Пожалуйста, введите корректный возраст!')
         return AGE
 
-    user_data[AGE] = age
-    logger.info('user_data: %s', user_data)
+    context.user_data[AGE] = age
+    logger.info('user_data: %s', context.user_data)
 
     # TODO: вот тут запись в базу финала
     # TODO 2: очистить `user_data`
@@ -87,13 +85,13 @@ def finish_handler(bot: Bot, update: Update, user_data: dict):
     # Завершить диалог
     update.message.reply_text(f'''
 Все данные успешно сохранены! 
-Вы: {user_data[NAME]}, пол: {gender_hru(user_data[GENDER])}, возраст: {user_data[AGE]} 
+Вы: {context.user_data[NAME]}, пол: {gender_hru(context.user_data[GENDER])}, возраст: {context.user_data[AGE]} 
 ''')
     return ConversationHandler.END
 
 
 @debug_requests
-def cancel_handler(bot: Bot, update: Update):
+def cancel_handler(update: Update, context: CallbackContext):
     """ Отменить весь процесс диалога. Данные будут утеряны
     """
     update.message.reply_text('Отмена. Для начала с нуля нажмите /start')
@@ -101,21 +99,18 @@ def cancel_handler(bot: Bot, update: Update):
 
 
 @debug_requests
-def echo_handler(bot: Bot, update: Update):
+def echo_handler(update: Update, context: CallbackContext):
     update.message.reply_text(
         'Нажмите /start для заполнения анкеты!',
-        reply_markup=ReplyKeyboardRemove(),
     )
 
 
 def main():
-    logger.info('Start bot')
-    bot = Bot(
+    logger.info('Started Anketa-bot')
+    updater = Updater(
         token=config.TG_TOKEN,
         base_url=config.TG_API_URL,
-    )
-    updater = Updater(
-        bot=bot,
+        use_context=True,
     )
 
     conv_handler = ConversationHandler(
@@ -142,7 +137,7 @@ def main():
 
     updater.start_polling()
     updater.idle()
-    logger.info('Finish bot')
+    logger.info('Stopped Anketa-bot')
 
 
 if __name__ == '__main__':

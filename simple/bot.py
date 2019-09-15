@@ -1,14 +1,22 @@
-from telegram import Bot
+from logging import getLogger
+
 from telegram import Update
+from telegram.ext import CallbackContext
 from telegram.ext import Updater
 from telegram.ext import MessageHandler
 from telegram.ext import Filters
 
+from echo.config import load_config
+from echo.utils import debug_requests
 
-TG_TOKEN = 'ваш токен'
+
+config = load_config()
+
+logger = getLogger(__name__)
 
 
-def message_handler(bot: Bot, update: Update):
+@debug_requests
+def message_handler(update: Update, context: CallbackContext):
     user = update.effective_user
     if user:
         name = user.first_name
@@ -18,19 +26,17 @@ def message_handler(bot: Bot, update: Update):
     text = update.effective_message.text
     reply_text = f'Привет, {name}!\n\n{text}'
 
-    bot.send_message(
-        chat_id=update.effective_message.chat_id,
+    update.message.reply_text(
         text=reply_text,
     )
 
 
 def main():
-    print('Start')
-    bot = Bot(
-        token=TG_TOKEN,
-    )
+    logger.info('Start')
     updater = Updater(
-        bot=bot,
+        token=config.TG_TOKEN,
+        base_url=config.TG_API_URL,
+        use_context=True,
     )
 
     handler = MessageHandler(Filters.all, message_handler)
@@ -38,7 +44,7 @@ def main():
 
     updater.start_polling()
     updater.idle()
-    print('Finish')
+    logger.info('Finish')
 
 
 if __name__ == '__main__':
