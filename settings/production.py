@@ -4,7 +4,7 @@ import os
 # Путь до коренной папки `tele_bot`
 BASE_PATH = os.path.dirname(os.path.dirname(__file__))
 
-
+# TODO: вписать сюда токен от своего бота!!!
 TG_TOKEN = "855883347:AAHZex9vshpWjUi0mUk57H_RDO-q1Vh_Pt8"
 
 # На сервере не используем прокси-URL

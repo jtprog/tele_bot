@@ -9,6 +9,7 @@
 """
 from logging import getLogger
 
+from telegram import Bot
 from telegram import ParseMode
 from telegram import Update
 from telegram.ext import CommandHandler
@@ -16,6 +17,7 @@ from telegram.ext import CallbackContext
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from telegram.utils.request import Request
 
 from echo.config import load_config
 from echo.utils import debug_requests
@@ -160,11 +162,24 @@ def echo_handler(update: Update, context: CallbackContext):
 
 def main():
     logger.info('Started Markup-Bot')
-    updater = Updater(
+
+    req = Request(
+        connect_timeout=0.5,
+        read_timeout=1.0,
+    )
+    bot = Bot(
         token=config.TG_TOKEN,
+        request=req,
         base_url=config.TG_API_URL,
+    )
+    updater = Updater(
+        bot=bot,
         use_context=True,
     )
+
+    # Проверить что бот корректно подключился к Telegram API
+    info = bot.get_me()
+    logger.info(f'Bot info: {info}')
 
     # Произвести демонстрацию разного форматирования
     updater.dispatcher.add_handler(CommandHandler('bold1', bold_text_md))
@@ -180,6 +195,7 @@ def main():
     # Если ничего не подошло - отправить список команд
     updater.dispatcher.add_handler(MessageHandler(Filters.all, echo_handler))
 
+    # Начать бесконечную обработку входящих сообщений
     updater.start_polling()
     updater.idle()
     logger.info('Stopped Markup-Bot')
