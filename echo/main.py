@@ -3,6 +3,7 @@ from logging import getLogger
 from subprocess import Popen
 from subprocess import PIPE
 
+from telegram import Bot
 from telegram import Update
 from telegram import ParseMode
 from telegram import InlineKeyboardButton
@@ -14,6 +15,7 @@ from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
 from telegram.ext import Filters
 from telegram.ext import CallbackQueryHandler
+from telegram.utils.request import Request
 
 from apis.bittrex import BittrexClient
 from apis.bittrex import BittrexError
@@ -237,12 +239,25 @@ def do_echo(update: Update, context: CallbackContext):
 def main():
     logger.info("Запускаем бота...")
 
-    updater = Updater(
+    req = Request(
+        connect_timeout=0.5,
+        read_timeout=1.0,
+    )
+    bot = Bot(
         token=config.TG_TOKEN,
+        request=req,
         base_url=config.TG_API_URL,
+    )
+    updater = Updater(
+        bot=bot,
         use_context=True,
     )
 
+    # Проверить что бот корректно подключился к Telegram API
+    info = bot.get_me()
+    logger.info(f'Bot info: {info}')
+
+    # Навесить обработчики команд
     start_handler = CommandHandler("start", do_start)
     help_handler = CommandHandler("help", do_help)
     time_handler = CommandHandler("time", do_time)
@@ -255,9 +270,8 @@ def main():
     updater.dispatcher.add_handler(message_handler)
     updater.dispatcher.add_handler(buttons_handler)
 
-    # Начать обработку входящих сообщений
+    # Начать бесконечную обработку входящих сообщений
     updater.start_polling()
-    # Не прерывать скрипт до обработки всех сообщений
     updater.idle()
 
     logger.info("Закончили...")

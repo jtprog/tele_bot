@@ -8,16 +8,6 @@ GENDER_MAP = {
 }
 
 
-def validate_gender(text: str) -> Optional[int]:
-    try:
-        gender = int(text)
-    except (TypeError, ValueError):
-        return None
-
-    if gender in GENDER_MAP:
-        return gender
-
-
 def gender_hru(gender: int) -> Optional[str]:
     return GENDER_MAP.get(gender)
 
