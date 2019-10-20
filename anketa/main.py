@@ -1,8 +1,11 @@
 from logging import getLogger
 
 from telegram import Bot
+from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardMarkup
 from telegram import Update
 from telegram.ext import CallbackContext
+from telegram.ext import CallbackQueryHandler
 from telegram.ext import Updater
 from telegram.ext import MessageHandler
 from telegram.ext import CommandHandler
@@ -15,7 +18,6 @@ from echo.utils import debug_requests
 from anketa.validators import GENDER_MAP
 from anketa.validators import gender_hru
 from anketa.validators import validate_age
-from anketa.validators import validate_gender
 
 
 config = load_config()
@@ -42,31 +44,36 @@ def name_handler(update: Update, context: CallbackContext):
     logger.info('user_data: %s', context.user_data)
 
     # Спросить пол
-    genders = [f'{key} - {value}' for key, value in GENDER_MAP.items()]
-    genders = '\n'.join(genders)
-    update.message.reply_text(f'''
-Выберите свой пол чтобы продолжить:
-{genders}
-''')
-    # TODO: кнопки !
+    inline_buttons = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=value, callback_data=key) for key, value in GENDER_MAP.items()],
+        ],
+    )
+    update.message.reply_text(
+        text='Выберите свой пол чтобы продолжить',
+        reply_markup=inline_buttons,
+    )
     return GENDER
 
 
 @debug_requests
 def age_handler(update: Update, context: CallbackContext):
     # Получить пол
-    gender = validate_gender(text=update.message.text)
-    if gender is None:
-        update.message.reply_text('Пожалуйста, укажите корректный пол!')
+    gender = update.callback_query.data
+    gender = int(gender)
+    if gender not in GENDER_MAP:
+        # Этой ситуации не должно быть для пользователя! То есть какое-то значение
+        # в кнопках есть, но оно не включено в список гендеров
+        update.effective_message.reply_text('Что-то пошло не так, обратитесь к администратору бота')
         return GENDER
 
     context.user_data[GENDER] = gender
     logger.info('user_data: %s', context.user_data)
 
     # Спросить возраст
-    update.message.reply_text('''
-Введите свой возраст:
-''')
+    update.effective_message.reply_text(
+        text='Введите свой возраст:',
+    )
     return AGE
 
 
@@ -138,7 +145,7 @@ def main():
                 MessageHandler(Filters.all, name_handler, pass_user_data=True),
             ],
             GENDER: [
-                MessageHandler(Filters.all, age_handler, pass_user_data=True),
+                CallbackQueryHandler(age_handler, pass_user_data=True),
             ],
             AGE: [
                 MessageHandler(Filters.all, finish_handler, pass_user_data=True),
