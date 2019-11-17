@@ -1,0 +1,11 @@
+numpy
+opencv-python
+opencv-contrib-python
+Pillow
+# https://python-mss.readthedocs.io/usage.html -- разный код для разных платформ
+mss
+
+# https://pyautogui.readthedocs.io/en/latest/install.html
+pyobjc-core
+pyobjc
+pyautogui
