@@ -33,7 +33,7 @@ def debug_requests(f):
 
     def inner(*args, **kwargs):
         try:
-            logger.info('Обращение в функцию {}'.format(f.__name__))
+            logger.debug('Обращение в функцию {}'.format(f.__name__))
             return f(*args, **kwargs)
         except Exception:
             logger.exception('Ошибка в обработчике {}'.format(f.__name__))
