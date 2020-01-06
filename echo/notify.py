@@ -62,7 +62,7 @@ def main():
 
     # Отправить сообщение
     bot.send_message(
-        chat_id=NOTIFY_USER_ID,
+        chat_id=config.NOTIFY_USER_ID,
         text=message,
     )
     logger.info('Success: %s', message)
