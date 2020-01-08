@@ -9,6 +9,7 @@
 Контакты
 ========
 
+* Канал в Telegram: https://telegg.ru/it_everyday
 * Заказать бота: https://telegg.ru/kasatkin_v
 * Научиться программировать самостоятельно: http://bit.ly/34wnx10
 
