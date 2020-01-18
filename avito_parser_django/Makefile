@@ -7,3 +7,9 @@ run_admin:
 
 parse:
 	python avito/manage.py parse_avito
+
+makemigrations:
+	python avito/manage.py makemigrations
+
+migrate:
+	python avito/manage.py migrate

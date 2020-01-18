@@ -1,12 +1,24 @@
 from django import forms
 
+from .models import Task
 from .models import Product
 
 
-class ProductForm(forms.ModelForm):
+class TaskForm(forms.ModelForm):
 
-    # def clean_url(self):
-    #     url = self.cleaned_data['url']
+    class Meta:
+        model = Task
+        fields = (
+            'title',
+            'url',
+            'status',
+        )
+        widgets = {
+            'title': forms.TextInput,
+        }
+
+
+class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product

@@ -7,7 +7,10 @@ import requests
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
+from aparser.constants import STATUS_NEW
+from aparser.constants import STATUS_READY
 from aparser.models import Product
+from aparser.models import Task
 
 
 logger = getLogger(__name__)
@@ -22,6 +25,19 @@ class AvitoParser:
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.2 Safari/605.1.15',
             'Accept-Language': 'ru',
         }
+        self.task = None
+
+    def find_task(self):
+        obj = Task.objects.filter(status=STATUS_NEW).first()
+        if not obj:
+            raise CommandError('no tasks found')
+        self.task = obj
+        logger.info(f'Работаем над заданием {self.task}')
+
+    def finish_task(self):
+        self.task.status = STATUS_READY
+        self.task.save()
+        logger.info(f'Завершили задание')
 
     def get_page(self, page: int = None):
         params = {
@@ -31,16 +47,14 @@ class AvitoParser:
         if page and page > 1:
             params['p'] = page
 
-        # url = 'https://www.avito.ru/moskva/avtomobili/bmw/5'
-        url = 'https://www.avito.ru/moskva/avtomobili/bmw/1'
-        # url = 'https://www.avito.ru/moskva/odezhda_obuv_aksessuary/zhenskaya_odezhda'
+        url = self.task.url
         r = self.session.get(url, params=params)
+        r.raise_for_status()
         return r.text
 
     @staticmethod
     def parse_date(item: str):
-        logger.info('parse_date: %s', item)
-
+        logger.debug('parse_date: %s', item)
         params = item.strip().split(' ')
         if len(params) == 2:
             day, time = params
@@ -135,12 +149,14 @@ class AvitoParser:
 
         try:
             p = Product.objects.get(url=url)
+            p.task = self.task
             p.title = title
             p.price = price
             p.currency = currency
             p.save()
         except Product.DoesNotExist:
             p = Product(
+                task=self.task,
                 url=url,
                 title=title,
                 price=price,
@@ -176,11 +192,18 @@ class AvitoParser:
             self.parse_block(item=item)
 
     def parse_all(self):
+        # Выбрать какое-нибудь задание
+        self.find_task()
+
         limit = self.get_pagination_limit()
         logger.info(f'Всего страниц: {limit}')
 
         for i in range(1, limit + 1):
+            logger.info(f'Работаем над страницей {i}')
             self.get_blocks(page=i)
+
+        # Завершить задание
+        self.finish_task()
 
 
 class Command(BaseCommand):
