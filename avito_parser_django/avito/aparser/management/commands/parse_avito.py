@@ -1,24 +1,20 @@
 import datetime
 import urllib.parse
-from collections import namedtuple
+from logging import getLogger
 
 import bs4
 import requests
 from django.core.management.base import BaseCommand
+from django.core.management.base import CommandError
 
 from aparser.models import Product
 
 
-InnerBlock = namedtuple('Block', 'title,price,currency,date,url')
-
-
-class Block(InnerBlock):
-
-    def __str__(self):
-        return f'{self.title}\t{self.price} {self.currency}\t{self.date}\t{self.url}'
+logger = getLogger(__name__)
 
 
 class AvitoParser:
+    PAGE_LIMIT = 10
 
     def __init__(self):
         self.session = requests.Session()
@@ -43,8 +39,9 @@ class AvitoParser:
 
     @staticmethod
     def parse_date(item: str):
+        logger.info('parse_date: %s', item)
+
         params = item.strip().split(' ')
-        # print(params)
         if len(params) == 2:
             day, time = params
             if day == 'Сегодня':
@@ -52,7 +49,7 @@ class AvitoParser:
             elif day == 'Вчера':
                 date = datetime.date.today() - datetime.timedelta(days=1)
             else:
-                print('Не смогли разобрать день:', item)
+                logger.error('Не смогли разобрать день: %s', item)
                 return
 
             time = datetime.datetime.strptime(time, '%H:%M').time()
@@ -77,20 +74,27 @@ class AvitoParser:
             }
             month = months_map.get(month_hru)
             if not month:
-                print('Не смогли разобрать месяц:', item)
+                logger.error('Не смогли разобрать месяц: %s', item)
                 return
 
-            today = datetime.datetime.today()
-            time = datetime.datetime.strptime(time, '%H:%M')
-            return datetime.datetime(day=day, month=month, year=today.year, hour=time.hour, minute=time.minute)
+            try:
+                today = datetime.datetime.today()
+                time = datetime.datetime.strptime(time, '%H:%M')
+                return datetime.datetime(day=day, month=month, year=today.year, hour=time.hour, minute=time.minute)
+            except ValueError:
+                year = datetime.datetime.strptime(time, '%Y')
+                return datetime.datetime(day=day, month=month, year=year.year)
 
         else:
-            print('Не смогли разобрать формат:', item)
+            logger.error('Не смогли разобрать формат:', item)
             return
 
     def parse_block(self, item):
         # Выбрать блок со ссылкой
-        url_block = item.select_one('a.item-description-title-link')
+        url_block = item.select_one('a.snippet-link')
+        if not url_block:
+            raise CommandError('bad "url_block" css')
+
         href = url_block.get('href')
         if href:
             url = 'https://www.avito.ru' + href
@@ -98,11 +102,15 @@ class AvitoParser:
             url = None
 
         # Выбрать блок с названием
-        title_block = item.select_one('h3.title.item-description-title span')
-        title = title_block.string.strip()
+        title = url_block.string.strip()
+        if not title:
+            raise CommandError(f'no title for item: {url_block}')
 
         # Выбрать блок с названием и валютой
         price_block = item.select_one('span.price')
+        if not price_block:
+            raise CommandError('bad "price_block" css')
+
         price_block = price_block.get_text('\n')
         price_block = list(filter(None, map(lambda i: i.strip(), price_block.split('\n'))))
         if len(price_block) == 2:
@@ -113,23 +121,17 @@ class AvitoParser:
             price, currency = 0, None
         else:
             price, currency = None, None
-            print(f'Что-то пошло не так при поиске цены: {price_block}, {url}')
+            logger.error(f'Что-то пошло не так при поиске цены: {price_block}, {url}')
 
         # Выбрать блок с датой размещения объявления
         date = None
         date_block = item.select_one('div.item-date div.js-item-date.c-2')
+        if not date_block:
+            raise CommandError('bad "date_block" css')
+
         absolute_date = date_block.get('data-absolute-date')
         if absolute_date:
             date = self.parse_date(item=absolute_date)
-
-        bbb = Block(
-            url=url,
-            title=title,
-            price=price,
-            currency=currency,
-            date=date,
-        )
-        print(bbb)
 
         try:
             p = Product.objects.get(url=url)
@@ -146,12 +148,11 @@ class AvitoParser:
                 published_date=date,
             ).save()
 
-        print(f'product {p}')
+        logger.debug(f'product {p}')
 
     def get_pagination_limit(self):
         text = self.get_page()
         soup = bs4.BeautifulSoup(text, 'lxml')
-        print(soup.prettify())
 
         container = soup.select('a.pagination-page')
         if not container:
@@ -163,7 +164,7 @@ class AvitoParser:
 
         r = urllib.parse.urlparse(href)
         params = urllib.parse.parse_qs(r.query)
-        return int(params['p'][0])
+        return min(int(params['p'][0]), self.PAGE_LIMIT)
 
     def get_blocks(self, page: int = None):
         text = self.get_page(page=page)
@@ -176,11 +177,10 @@ class AvitoParser:
 
     def parse_all(self):
         limit = self.get_pagination_limit()
-        print(f'Всего страниц: {limit}')
+        logger.info(f'Всего страниц: {limit}')
 
         for i in range(1, limit + 1):
             self.get_blocks(page=i)
-            # break
 
 
 class Command(BaseCommand):
