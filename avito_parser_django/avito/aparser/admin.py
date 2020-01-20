@@ -16,7 +16,9 @@ class PriceFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         # Вытащить полный список цен
         prices = [c.price for c in model_admin.model.objects.all()]
-        prices = filter(None, prices)
+        prices = list(filter(None, prices))
+        if not prices:
+            return
 
         # TODO: найти "кластера цен", то есть такие интервалы, внутри которых точно есть продукты!
 
@@ -52,6 +54,7 @@ class ProductAdmin(admin.ModelAdmin):
         PriceFilter,
     )
     form = ProductForm
+    list_per_page = 150
 
 
 @admin.register(Task)
