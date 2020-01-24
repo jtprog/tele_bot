@@ -6,7 +6,12 @@ beautifulsoup4==4.7.1
 lxml==4.4.1
 Django==2.2.7
 
+pyrogram==0.16.0
+tgcrypto==1.2.0
+
 aiohttp[speedups]==3.6.2
 uvloop==0.14.0
 ujson==1.35
 aiogram==2.5.3
+
+pyttsx3==2.80
