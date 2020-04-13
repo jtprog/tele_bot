@@ -1,4 +1,4 @@
-from logging import getLogger
+import logging
 
 from telegram import Bot
 from telegram import InlineKeyboardButton
@@ -14,7 +14,7 @@ from telegram.ext import Filters
 from telegram.utils.request import Request
 
 from echo.config import load_config
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 from anketa.validators import GENDER_MAP
 from anketa.validators import gender_hru
 from anketa.validators import validate_age
@@ -22,17 +22,54 @@ from anketa.validators import validate_age
 
 config = load_config()
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 
 NAME, GENDER, AGE = range(3)
 
+CALLBACK_BEGIN = 'x1'
+
+
+@debug_requests
+def start_buttons_handler(update: Update, context: CallbackContext):
+    """ Не относится к сценарию диалога, но создаёт начальные inline-кнопки
+    """
+    inline_buttons = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text='Начать', callback_data=CALLBACK_BEGIN),
+            ],
+        ],
+    )
+    update.message.reply_text(
+        'Нажми на кнопку:',
+        reply_markup=inline_buttons,
+    )
+
 
 @debug_requests
 def start_handler(update: Update, context: CallbackContext):
+    """ Начало взаимодействия по клику на inline-кнопку
+    """
+    init = update.callback_query.data
+    chat_id = update.callback_query.message.chat.id
+
+    if init != CALLBACK_BEGIN:
+        logger.debug('bad init: %s', init)
+        update.callback_query.bot.send_message(
+            chat_id=chat_id,
+            text='Что-то пошло не так, обратитесь к администратору бота',
+        )
+        return ConversationHandler.END
+
+    update.callback_query.answer()
+
     # Спросить имя
-    update.message.reply_text(
-        'Введи своё имя чтобы продолжить:',
+    update.callback_query.bot.send_message(
+        chat_id=chat_id,
+        text='Введи своё имя чтобы продолжить:',
     )
     return NAME
 
@@ -138,7 +175,7 @@ def main():
     # Навесить обработчики команд
     conv_handler = ConversationHandler(
         entry_points=[
-            CommandHandler('start', start_handler),
+            CallbackQueryHandler(start_handler, pass_user_data=True),
         ],
         states={
             NAME: [
@@ -156,6 +193,7 @@ def main():
         ],
     )
     updater.dispatcher.add_handler(conv_handler)
+    updater.dispatcher.add_handler(CommandHandler('start', start_buttons_handler))
     updater.dispatcher.add_handler(MessageHandler(Filters.all, echo_handler))
 
     # Начать бесконечную обработку входящих сообщений

@@ -23,12 +23,14 @@ from echo.config import load_config
 from echo.buttons import BUTTON1_HELP
 from echo.buttons import BUTTON2_TIME
 from echo.buttons import get_base_reply_keyboard
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 
 
 config = load_config()
 
 logger = getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 
 # `callback_data` -- это то, что будет присылать TG при нажатии на каждую кнопку.

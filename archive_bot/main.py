@@ -16,12 +16,14 @@ from archive_bot.db import add_message
 from archive_bot.db import count_messages
 from archive_bot.db import list_messages
 from echo.config import load_config
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 
 
 config = load_config()
 
 logger = getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 
 COMMAND_COUNT = 'count'

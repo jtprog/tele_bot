@@ -10,12 +10,14 @@ from telegram.ext import Updater
 from telegram.utils.request import Request
 
 from echo.config import load_config
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 
 
 config = load_config()
 
 logger = getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 
 @debug_requests
