@@ -1,13 +1,10 @@
+import functools
 import random
 import time
 import os
-from logging import getLogger
 from io import BytesIO
 
 from PIL import Image
-
-
-logger = getLogger(__name__)
 
 
 def mkdir(path):
@@ -31,22 +28,25 @@ def get_filename():
     return filename
 
 
-def debug_requests(f):
-    """ Декоратор для отладки событий от телеграма
-        Логгер подключается в самый последний момент чтобы быть уверенными в том, что конфиг логирования уже загружен
+def logger_factory(logger):
+    """ Импорт функции происходит раньше чем загрузка конфига логирования.
+        Поэтому нужно явно указать в какой логгер мы хотим записывать.
     """
-    from logging import getLogger
-    logger = getLogger(__name__)
+    def debug_requests(f):
 
-    def inner(*args, **kwargs):
-        try:
-            logger.debug('Обращение в функцию {}'.format(f.__name__))
-            return f(*args, **kwargs)
-        except Exception:
-            logger.exception('Ошибка в обработчике {}'.format(f.__name__))
-            raise
+        @functools.wraps(f)
+        def inner(*args, **kwargs):
 
-    return inner
+            try:
+                logger.debug('Обращение в функцию `{}`'.format(f.__name__))
+                return f(*args, **kwargs)
+            except Exception:
+                logger.exception('Ошибка в функции `{}`'.format(f.__name__))
+                raise
+
+        return inner
+
+    return debug_requests
 
 
 def save_image(img: Image, img_format=None, quality=85):

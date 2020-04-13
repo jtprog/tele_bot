@@ -1,4 +1,4 @@
-from logging import getLogger
+import logging
 
 from telegram import Bot
 from telegram import InlineKeyboardButton
@@ -14,7 +14,7 @@ from telegram.ext import Filters
 from telegram.utils.request import Request
 
 from echo.config import load_config
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 from anketa.validators import GENDER_MAP
 from anketa.validators import gender_hru
 from anketa.validators import validate_age
@@ -22,7 +22,9 @@ from anketa.validators import validate_age
 
 config = load_config()
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 
 NAME, GENDER, AGE = range(3)

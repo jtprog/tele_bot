@@ -11,12 +11,15 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
 from echo.config import load_config
-from echo.utils import debug_requests
+from echo.utils import logger_factory
 from inline.search import Searcher
 
 
 config = load_config()
+
 logger = getLogger(__name__)
+
+debug_requests = logger_factory(logger=logger)
 
 search = Searcher()
 
