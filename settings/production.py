@@ -1,6 +1,8 @@
 import logging.config
 import os
 
+import sentry_sdk
+
 
 # Путь до коренной папки `tele_bot`
 BASE_PATH = os.path.dirname(os.path.dirname(__file__))
@@ -48,3 +50,9 @@ LOGGING = {
     },
 }
 logging.config.dictConfig(LOGGING)
+
+# Sentry
+# TODO: добавить свой DSN из https://sentry.io
+sentry_sdk.init(
+    dsn=None,
+)

@@ -4,6 +4,7 @@ import time
 import os
 from io import BytesIO
 
+import sentry_sdk
 from PIL import Image
 
 
@@ -40,8 +41,9 @@ def logger_factory(logger):
             try:
                 logger.debug('Обращение в функцию `{}`'.format(f.__name__))
                 return f(*args, **kwargs)
-            except Exception:
+            except Exception as e:
                 logger.exception('Ошибка в функции `{}`'.format(f.__name__))
+                sentry_sdk.capture_exception(error=e)
                 raise
 
         return inner
