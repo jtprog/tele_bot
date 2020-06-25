@@ -2,6 +2,13 @@ import logging
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.bot import api
+import sentry_sdk
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+
+sentry_sdk.init(
+    dsn="https://5f433888d1724989ad4752e9e8a5b014@o412493.ingest.sentry.io/5289339",
+    integrations=[AioHttpIntegration()]
+)
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -16,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Создать глобального бота
 bot = Bot(
-    token='XXX',
+    token='1024509476:AAEA6B9bpWxAl0Uqg25WZ3ByL7cQdvTusDw',
 )
 dp = Dispatcher(
     bot=bot,
@@ -48,9 +55,13 @@ async def send_welcome(message: types.Message):
 
 @dp.message_handler(content_types=types.ContentType.TEXT)
 async def do_echo(message: types.Message):
-    text = message.text
-    if text and not text.startswith('/'):
-        await message.reply(text=text)
+    try:
+        text = message.text
+        if text and not text.startswith('/'):
+            # q = 1 / 0
+            await message.reply(text=text)
+    except Exception as e:
+        sentry_sdk.capture_exception(error=e)
 
 
 def main():
